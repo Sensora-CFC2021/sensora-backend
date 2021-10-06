@@ -15,7 +15,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
@@ -27,7 +26,6 @@ DEBUG = int(os.environ.get('DEBUG', default=1))
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -37,6 +35,24 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
+
+    'rest_framework',
+    "rest_framework_api_key",
+    'sorl.thumbnail',
+    'corsheaders',
+    'oauth2_provider',
+    'social_django',
+    'rest_framework_social_oauth2',
+
+    "push_notifications",
+
+    'django_crontab',
+
+    'users.apps.UsersConfig',
+    'references',
+    'api',
+    'farmers',
 ]
 
 MIDDLEWARE = [
@@ -70,18 +86,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'OPTIONS': {
+            'sql_mode': 'traditional',
+        },
+        'NAME': os.environ.get('SQL_DATABASE', 'sensora'),
+        'USER': os.environ.get('SQL_USER', 'root'),
+        'PASSWORD': os.environ.get('SQL_PASSWORD', 'Root(2)1'),
+        'HOST': os.environ.get('SQL_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('SQL_PORT', '3306'),
     }
 }
-
-
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -100,7 +120,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
@@ -112,15 +131,83 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.2/howto/static-files/
-
-STATIC_URL = '/static/'
+USE_TZ = False
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/3.1/howto/static-files/
+
+if DEBUG:
+    STATIC_URL = '/staticfiles/'
+    STATIC_ROOT = 'static/'
+    MEDIA_URL = '/mediafiles/'
+    MEDIA_ROOT = 'media/'
+
+USE_S3 = os.environ.get('USE_S3', default='FALSE') == 'TRUE'
+if USE_S3:
+    # aws settings
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+    AWS_DEFAULT_ACL = None
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    # s3 public media settings
+    PUBLIC_STATIC_LOCATION = 'static'
+    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_STATIC_LOCATION}/'
+    STATICFILES_STORAGE = 'api.storage_backends.PublicStaticStorage'
+
+    PUBLIC_MEDIA_LOCATION = 'media'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/'
+    DEFAULT_FILE_STORAGE = 'api.storage_backends.PublicMediaStorage'
+
+THUMBNAIL_FORCE_OVERWRITE = True
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.facebook.FacebookAppOAuth2',
+    'social_core.backends.facebook.FacebookOAuth2',
+    'rest_framework_social_oauth2.backends.DjangoOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DATETIME_FORMAT': "%Y-%m-%d %H:%M:%S",
+    'PAGE_SIZE': 10,
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        'rest_framework_social_oauth2.authentication.SocialAuthentication'
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
+
+OAUTH2_PROVIDER = {
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 60 * 60 * 24 * 60,
+    'OAUTH_SINGLE_ACCESS_TOKEN': True,
+    'OAUTH_DELETE_EXPIRED': True
+}
+
+SOCIAL_AUTH_FACEBOOK_KEY = os.environ.get('FB_ID', 'sensora')
+SOCIAL_AUTH_FACEBOOK_SECRET = os.environ.get('FB_SECRET', 'sensora')
+SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']
+SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
+    'fields': 'id, name, email'
+}
+
+SOCIAL_AUTH_FACEBOOK_EXTRA_DATA = [
+    ('name', 'name'),
+    ('email', 'email'),
+]
+
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = os.getenv('REDIS_PORT', 6379)
+WEATHER_API_KEY = os.getenv('WEATHER_API_KEY', 'lol')
