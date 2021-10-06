@@ -1,0 +1,3 @@
+#run python script every minutes  >> /usr/share/nginx/html/backend/cron.log 2>&1
+#*/5 * * * * root . /project_env.sh; /usr/share/nginx/html/backend/run_cron.sh
+
